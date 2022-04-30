@@ -53,29 +53,50 @@ func NewField() *Field {
 	return &field
 }
 
-func (f *Field) ShowField() {
-	fmt.Println("  0 1 2 3 4 5 6 7 8 9")
-	fmt.Println("  A B C D E F G H I J")
-	for i := 0; i < 10; i++ {
-		fmt.Print(strconv.Itoa(i) + " ")
-		for r := 0; r < 10; r++ {
-			fmt.Print(f[r][i].StatusCode)
-			fmt.Print(" ")
-		}
+func ShowField(MyField, EnemyField *Field) {
+	chm := make(chan string)
+	che := make(chan string)
+
+	go ShowHiddenField(MyField, chm)
+	go ShowHiddenField(EnemyField, che)
+
+	for i := 0; i < 12; i++ {
+		fmt.Print(<-che)
+		fmt.Print("      ")
+		fmt.Print(<-chm)
 		fmt.Println()
 	}
 }
-func (f *Field) ShowHiddenField() {
-	fmt.Println("  0 1 2 3 4 5 6 7 8 9")
-	fmt.Println("  A B C D E F G H I J")
+
+func Show(f *Field, ch chan string) {
+	var t string
+	ch <- "  0 1 2 3 4 5 6 7 8 9 "
+	ch <- "  A B C D E F G H I J "
 	for i := 0; i < 10; i++ {
-		fmt.Print(strconv.Itoa(i) + " ")
+		t = t + strconv.Itoa(i) + " "
 		for r := 0; r < 10; r++ {
-			fmt.Print(f[r][i].Hidden)
-			fmt.Print(" ")
+			t = t + f[r][i].StatusCode
+			t = t + " "
 		}
-		fmt.Println()
+		ch <- t
+		t = ""
 	}
+	defer close(ch)
+}
+func ShowHiddenField(f *Field, ch chan string) {
+	var t string
+	ch <- "  0 1 2 3 4 5 6 7 8 9 "
+	ch <- "  A B C D E F G H I J "
+	for i := 0; i < 10; i++ {
+		t = t + strconv.Itoa(i) + " "
+		for r := 0; r < 10; r++ {
+			t = t + f[r][i].Hidden
+			t = t + " "
+		}
+		ch <- t
+		t = ""
+	}
+	defer close(ch)
 }
 
 func Convert(s string) (int, int) {
@@ -362,12 +383,12 @@ func setTresShip(f *Field, in int) int {
 
 func setCuatroShip(f *Field) {
 	//fmt.Println("4 pal try")
-	//col := 0
-	//row := 1
-	col := RandNum(7)
-	row := RandNum(7)
+	col := 0
+	row := 1
+	//col := RandNum(7)
+	//row := RandNum(7)
 
-	direction := RandDir()
+	direction := "right" //RandDir()
 	switch direction {
 	case "right":
 		for c := col; c < col+4; c++ {

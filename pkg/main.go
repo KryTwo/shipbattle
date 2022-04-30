@@ -13,42 +13,27 @@ package main
 import (
 	"fmt"
 	"main/pkg/fieldBuilder"
-	M "main/pkg/msg"
+	msg "main/pkg/msg"
+	s "main/pkg/status"
 	"os"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 var lastHit fieldBuilder.Cell
 var Direction string
 var SelectLimit []int
+var Wrong string
+
+//func selectOne(chm, che chan string) {
+//	for {
+//		select {}
+//	}
+//}
 
 func main() {
 	MyField := fieldBuilder.NewField()
 	EnemyField := fieldBuilder.NewField()
-
-	MyField.SetShipRandom()
-	EnemyField.SetShipRandom()
-
-	MyField.ShowField()
-	EnemyField.ShowField()
-
-	chm := make(chan string)
-
-	//MyField.ShowField()
-	//MyField.SetShipRandom()
-	//MyField.ShowField()
-	//MyField := fieldBuilder.NewField()
-	//EnemyField := fieldBuilder.NewField()
-	//
-	//EnemyField.SetShipRandom()
-	//MyField.SetShipRandom()
-	//
-	//EnemyField.ShowField()
-	//fmt.Println("---------------------")
-	//MyField.ShowField()
-
 	/*
 		1. Начать игру с ботом
 		 -> 1.1 рандомное расположение своих кораблей
@@ -56,23 +41,22 @@ func main() {
 		2. Начать игру с соперником
 		3. stop - остановить игру, вызывается из любого места программы
 	*/
-	//var in string
-	//for {
-	//	M.Print(M.MsgWelcome)
-	//	fmt.Fscan(os.Stdin, &in)
-	//	switch in {
-	//	case "1": //начать игру с ботом
-	//		selectStartOption(MyField, EnemyField)
-	//	case "2": //начать игру онлайн
-	//		fmt.Println("В разработке")
-	//	case "0": //выйти
-	//		fmt.Println("Выход в разработке")
-	//	default:
-	//		fmt.Println("игнор")
-	//
-	//		//неизвестная команда
-	//	}
-	//}
+	var in string
+	for {
+		fmt.Println(msg.MsgWelcome)
+		fmt.Fscan(os.Stdin, &in)
+		switch in {
+		case "1": //начать игру с ботом
+			selectStartOption(MyField, EnemyField)
+		case "2": //начать игру онлайн
+			fmt.Println("В разработке")
+		case "0": //выйти
+			fmt.Println("Куда ты собрался выходить???")
+		default:
+			fmt.Println("Я тебя игнорирую")
+
+		}
+	}
 
 	//MyField.SetShip(in)
 	//MyField.ShowField()
@@ -99,7 +83,7 @@ func coinFlipping() bool {
 
 func selectStartOption(m, e *fieldBuilder.Field) {
 	var in string
-	M.Print(M.MsgHowToSetShip)
+	fmt.Println(msg.MsgHowToSetShip)
 	fmt.Fscan(os.Stdin, &in)
 
 	switch in {
@@ -107,11 +91,7 @@ func selectStartOption(m, e *fieldBuilder.Field) {
 		e.SetShipRandom()
 		fmt.Println("Выбрано \"автоматически\"")
 		m.SetShipRandom()
-		fmt.Println("Ваше поле:")
-		m.ShowField()
-		fmt.Println("Поле врага:")
-		//e.ShowField()
-		e.ShowHiddenField()
+		fieldBuilder.ShowField(m, e)
 		startGame(m, e)
 
 		//автоматические корабли
@@ -126,52 +106,103 @@ func selectStartOption(m, e *fieldBuilder.Field) {
 	}
 
 }
-
+func checkScore(me, enemy int) bool {
+	if me == 0 {
+		fmt.Println("Лузер, проебал")
+		return true
+	}
+	if enemy == 0 {
+		fmt.Println("Блэд, ты выиграл...")
+		return true
+	}
+	return false
+}
 func startGame(m, e *fieldBuilder.Field) {
 	//coinFlipping()
 	shipLeftMe := 20    //ячеек кораблей осталось
 	shipLeftEnemy := 20 //ячеек кораблей осталось
-	for shipLeftMe != 0 || shipLeftEnemy != 0 {
-		//if shootMe(e, &shipLeftEnemy) {
-		//	if shipLeftEnemy != 0 {
-		//		shootMe(e, &shipLeftEnemy)
-		//	} else {
-		//		fmt.Println("вы выиграли")
-		//		return
-		//	}
-		//}
-		for {
-			shootEnemy(m, &shipLeftMe)
-			time.Sleep(500 * time.Millisecond)
-		}
-		//if shootEnemy(m, &shipLeftMe) {
-		//	if shipLeftEnemy != 0 {
-		//		shootEnemy(m, &shipLeftMe)
-		//	} else {
-		//		fmt.Println("вы проиграли")
-		//		return
-		//	}
-		//}
 
+	for {
+		shootMe(e, m, &shipLeftEnemy)
+		if checkScore(shipLeftMe, shipLeftEnemy) {
+			return
+		}
+		shootEnemy(m, e, &shipLeftMe)
+		if checkScore(shipLeftMe, shipLeftEnemy) {
+			return
+		}
 	}
 
 }
 
-func CustomConvert(i fieldBuilder.Cell) string {
-	c := strconv.Itoa(i.Column)
-	r := strconv.Itoa(i.Row)
-	buf := []byte(c)
-	buf[0] += 49
-
-	return string(buf[0]) + r
+func waitingCommand() string {
+	var in string
+	fmt.Println(msg.MsgSelectCellToShoot)
+	fmt.Fscan(os.Stdin, &in)
+	if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched == true {
+		return in
+	}
+	fmt.Println(msg.MsgWrongCommand)
+	return waitingCommand()
 }
 
-func shootEnemy(f *fieldBuilder.Field, shipLeftEnemy *int) bool {
+func shootMe(e, m *fieldBuilder.Field, shipLeftEnemy *int) bool {
+	in := waitingCommand()
+
+	result := shoot(e, in, shipLeftEnemy)
+	if result == s.Miss {
+		return false
+	}
+	fieldBuilder.ShowField(m, e)
+	return shootMe(e, m, shipLeftEnemy)
+}
+
+func shoot(field *fieldBuilder.Field, in string, shipLeft *int) string {
+	col, row := fieldBuilder.Convert(in)
+
+	isHere := isShipHere(field, col, row)
+	allow := allowedToShoot(field, col, row)
+
+	if !allow {
+		Wrong = msg.MsgDoubleShot
+		return s.DoubleShot
+	}
+
+	if !isHere && field[col][row].Hidden == fieldBuilder.Hidden {
+		field[col][row].Hidden = fieldBuilder.EmptyShip
+		return s.Miss
+	}
+
+	if isHere && allow {
+		size := fieldBuilder.ShipSize(field, col, row)
+		leftDeck := getLeftDeck(field, col, row)
+		if size != 1 { // однопалубник
+			switch leftDeck {
+			case 1: // будет убит
+				destroy(field, col, row)
+				*shipLeft--
+				return s.Destroy
+			default: // будет ранен
+				injure(field, col, row)
+				*shipLeft--
+				return s.Injured
+			}
+		} else {
+			completelyDestroy(field, col, row)
+			*shipLeft--
+			return s.Destroy
+		}
+	}
+	return ""
+}
+
+func shootEnemy(m, e *fieldBuilder.Field, shipLeftEnemy *int) bool {
+	defer fieldBuilder.ShowField(m, e)
 	var leftEmptyCells []fieldBuilder.Cell
 	for c := 0; c < 10; c++ {
 		for r := 0; r < 10; r++ {
-			if f[c][r].Hidden == fieldBuilder.Hidden {
-				leftEmptyCells = append(leftEmptyCells, f[c][r])
+			if m[c][r].Hidden == fieldBuilder.Hidden {
+				leftEmptyCells = append(leftEmptyCells, m[c][r])
 			}
 		}
 	}
@@ -181,48 +212,62 @@ func shootEnemy(f *fieldBuilder.Field, shipLeftEnemy *int) bool {
 	if lastHit.Hidden == "" {
 		i = fieldBuilder.RandNum(len(leftEmptyCells))
 	} else {
-		i = selectNearCell(f, leftEmptyCells)
+		i = selectNearCell(m, leftEmptyCells)
 	}
 
 	in := CustomConvert(leftEmptyCells[i])
 	col, row := fieldBuilder.Convert(in)
 
-	shoot(f, in, shipLeftEnemy)
-	if f[col][row].Hidden == fieldBuilder.DestroyedShip {
+	shoot(m, in, shipLeftEnemy)
+	if m[col][row].Hidden == fieldBuilder.DestroyedShip {
 		Direction = ""
-		f.ShowField()
-		f.ShowHiddenField()
 		lastHit.Hidden = ""
 		SelectLimit = nil
 		Direction = ""
-		return true
+		return shootEnemy(m, e, shipLeftEnemy)
 	}
-	if f[col][row].Hidden == fieldBuilder.EmptyShip && lastHit.Hidden != "" {
-		f.ShowField()
-		f.ShowHiddenField()
+	if m[col][row].Hidden == fieldBuilder.EmptyShip && lastHit.Hidden != "" {
 		//time.Sleep(1000 * time.Millisecond)
 		SelectLimit = nil
 		return false
 	}
-	if f[col][row].Hidden == fieldBuilder.EmptyShip {
+	if m[col][row].Hidden == fieldBuilder.EmptyShip {
 		lastHit.Hidden = ""
-		f.ShowField()
-		f.ShowHiddenField()
 		//time.Sleep(1000 * time.Millisecond)
 		return false
 	}
-	if f[col][row].Hidden == fieldBuilder.InjuredShip {
+	if m[col][row].Hidden == fieldBuilder.InjuredShip {
 		//rotation := getRotationShip()
 		SelectLimit = nil
 		lastHit = leftEmptyCells[i]
 
-		f.ShowField()
-		f.ShowHiddenField()
 		//time.Sleep(1000 * time.Millisecond)
-		return true
+		return shootEnemy(m, e, shipLeftEnemy)
 	}
 
+	return shootEnemy(m, e, shipLeftEnemy)
+}
+
+func allowedToShoot(enemyField *fieldBuilder.Field, col, row int) bool {
+	if enemyField[col][row].Hidden == fieldBuilder.InjuredShip {
+		return false
+	}
+	if enemyField[col][row].Hidden == fieldBuilder.DestroyedShip {
+		return false
+	}
+	if enemyField[col][row].Hidden == fieldBuilder.EmptyShip {
+		return false
+	}
 	return true
+}
+
+func CustomConvert(i fieldBuilder.Cell) string {
+	c := strconv.Itoa(i.Column)
+	r := strconv.Itoa(i.Row)
+	buf := []byte(c)
+	buf[0] += 49
+
+	return string(buf[0]) + r
 }
 
 //func getRotationShip(f *fieldBuilder.Field, col, row int) string {
@@ -322,60 +367,6 @@ func Find(a []fieldBuilder.Cell, x fieldBuilder.Cell) int {
 		}
 	}
 	return len(a)
-}
-
-func shootMe(e *fieldBuilder.Field, shipLeftEnemy *int) bool {
-	var in string
-	M.Print(M.SelectCellToShoot)
-	fmt.Fscan(os.Stdin, &in)
-	if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched == true {
-		fmt.Println(*shipLeftEnemy)
-		if !shoot(e, in, shipLeftEnemy) {
-			e.ShowHiddenField()
-			fmt.Println("missed")
-			return false
-		}
-	}
-
-	return true
-}
-
-func shoot(field *fieldBuilder.Field, in string, shipLeft *int) bool {
-	col, row := fieldBuilder.Convert(in)
-
-	isHere := isShipHere(field, col, row)
-	allow := allowedToShoot(field, col, row)
-
-	if !isHere && field[col][row].Hidden == fieldBuilder.Hidden {
-		field[col][row].Hidden = fieldBuilder.EmptyShip
-		return false
-	}
-
-	if !isHere && allow {
-		fmt.Println("сюда стрелять нельзя")
-		return true
-	}
-
-	if isHere && allow {
-		size := fieldBuilder.ShipSize(field, col, row)
-		leftDeck := getLeftDeck(field, col, row)
-		if size != 1 { // однопалубник
-			switch leftDeck {
-			case 1: // будет убит
-				destroy(field, col, row)
-				*shipLeft--
-			default: // будет ранен
-				injure(field, col, row)
-				*shipLeft--
-			}
-		} else {
-			completelyDestroy(field, col, row)
-			*shipLeft--
-		}
-		field.ShowHiddenField()
-		return true
-	}
-	return false
 }
 
 func completelyDestroy(e *fieldBuilder.Field, col, row int) {
@@ -546,19 +537,4 @@ func getLeftDeck(f *fieldBuilder.Field, col, row int) int {
 
 	return leftDeck
 
-}
-
-func allowedToShoot(enemyField *fieldBuilder.Field, col, row int) bool {
-	if enemyField[col][row].Hidden == fieldBuilder.InjuredShip {
-		fmt.Println("вы уже стреляли туда")
-		return false
-	}
-	if enemyField[col][row].Hidden == fieldBuilder.DestroyedShip {
-		fmt.Println("вы уже стреляли туда")
-		return false
-	}
-	if enemyField[col][row].Hidden == fieldBuilder.EmptyShip {
-		return false
-	}
-	return true
 }
