@@ -1,8 +1,8 @@
 package status
 
 const (
-	Miss       = "miss"
-	Injured    = "injured"
-	Destroy    = "destroy"
-	DoubleShot = "double"
+	Miss       = "Промах"
+	Injured    = "Корабль ранен"
+	Destroy    = "Корабль уничтожен"
+	DoubleShot = "Сюда стрелять нельзя"
 )

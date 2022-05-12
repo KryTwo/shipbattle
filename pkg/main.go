@@ -16,6 +16,7 @@ import (
 	msg "main/pkg/msg"
 	s "main/pkg/status"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 )
@@ -23,17 +24,33 @@ import (
 var lastHit fieldBuilder.Cell
 var Direction string
 var SelectLimit []int
-var Wrong string
+var clear map[string]func() //create a map for storing clear funcs
 
-//func selectOne(chm, che chan string) {
-//	for {
-//		select {}
-//	}
-//}
+func init() {
+	clear = make(map[string]func()) //Initialize it
+	clear["linux"] = func() {
+		cmd := exec.Command("clear") //Linux example, its tested
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
+	clear["windows"] = func() {
+		cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
+}
 
+func callClear() {
+	//value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
+	//if ok {                          //if we defined a clear func for that platform:
+	//	value() //we execute it
+	//} else { //unsupported platform
+	//	panic("Your platform is unsupported! I can't clear terminal screen :(")
+	//}
+}
 func main() {
-	MyField := fieldBuilder.NewField()
-	EnemyField := fieldBuilder.NewField()
+	callClear()
+
 	/*
 		1. Начать игру с ботом
 		 -> 1.1 рандомное расположение своих кораблей
@@ -43,16 +60,22 @@ func main() {
 	*/
 	var in string
 	for {
+		MyField := fieldBuilder.NewField()
+		EnemyField := fieldBuilder.NewField()
 		fmt.Println(msg.MsgWelcome)
 		fmt.Fscan(os.Stdin, &in)
 		switch in {
 		case "1": //начать игру с ботом
+			callClear()
 			selectStartOption(MyField, EnemyField)
 		case "2": //начать игру онлайн
+			callClear()
 			fmt.Println("В разработке")
-		case "0": //выйти
-			fmt.Println("Куда ты собрался выходить???")
+		//case "0": //выйти
+		//	callClear()
+		//	fmt.Println("Куда ты собрался выходить???")
 		default:
+			callClear()
 			fmt.Println("Я тебя игнорирую")
 
 		}
@@ -81,6 +104,12 @@ func coinFlipping() bool {
 	return false
 }
 
+func clearVariables(m, e *fieldBuilder.Field) {
+	m = fieldBuilder.NewField()
+	e = fieldBuilder.NewField()
+	SelectLimit = nil
+}
+
 func selectStartOption(m, e *fieldBuilder.Field) {
 	var in string
 	fmt.Println(msg.MsgHowToSetShip)
@@ -89,21 +118,44 @@ func selectStartOption(m, e *fieldBuilder.Field) {
 	switch in {
 	case "1":
 		e.SetShipRandom()
-		fmt.Println("Выбрано \"автоматически\"")
 		m.SetShipRandom()
 		fieldBuilder.ShowField(m, e)
 		startGame(m, e)
-
+		clearVariables(m, e)
 		//автоматические корабли
 	case "2":
-		fmt.Println("ручной режим в разработке")
-		break
+		fieldBuilder.ShowField(m, e)
+		e.SetShipRandom()
+		manualSet(m, e)
+		startGame(m, e)
 		//Корабли вручную
 	case "0":
 		fmt.Println("Выход в предыдущее меню")
 		break
 		//выйти
 	}
+
+}
+
+func manualSet(m, e *fieldBuilder.Field) {
+	var in string
+	var i int
+
+	for i < 20 {
+		fmt.Println(msg.MsgSelectCellToSetShip)
+		fmt.Fscan(os.Stdin, &in)
+		if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched != true {
+
+			fieldBuilder.ShowField(m, e)
+			continue
+		}
+		if m.ManualSetShip(in) {
+			i++
+		}
+		fieldBuilder.ShowField(m, e)
+
+	}
+	fieldBuilder.ClearShipsOnField()
 
 }
 func checkScore(me, enemy int) bool {
@@ -135,25 +187,28 @@ func startGame(m, e *fieldBuilder.Field) {
 
 }
 
-func waitingCommand() string {
+func waitingCommand(m, e *fieldBuilder.Field) string {
 	var in string
 	fmt.Println(msg.MsgSelectCellToShoot)
 	fmt.Fscan(os.Stdin, &in)
 	if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched == true {
 		return in
 	}
+	fieldBuilder.ShowField(m, e)
 	fmt.Println(msg.MsgWrongCommand)
-	return waitingCommand()
+	return waitingCommand(m, e)
 }
 
 func shootMe(e, m *fieldBuilder.Field, shipLeftEnemy *int) bool {
-	in := waitingCommand()
+	in := waitingCommand(m, e)
 
 	result := shoot(e, in, shipLeftEnemy)
 	if result == s.Miss {
 		return false
+		fmt.Println(result)
 	}
 	fieldBuilder.ShowField(m, e)
+	fmt.Println(result)
 	return shootMe(e, m, shipLeftEnemy)
 }
 
@@ -164,12 +219,12 @@ func shoot(field *fieldBuilder.Field, in string, shipLeft *int) string {
 	allow := allowedToShoot(field, col, row)
 
 	if !allow {
-		Wrong = msg.MsgDoubleShot
 		return s.DoubleShot
 	}
 
 	if !isHere && field[col][row].Hidden == fieldBuilder.Hidden {
 		field[col][row].Hidden = fieldBuilder.EmptyShip
+		field[col][row].HiddenMe = fieldBuilder.EmptyShip
 		return s.Miss
 	}
 
@@ -371,6 +426,7 @@ func Find(a []fieldBuilder.Cell, x fieldBuilder.Cell) int {
 
 func completelyDestroy(e *fieldBuilder.Field, col, row int) {
 	e[col][row].Hidden = fieldBuilder.DestroyedShip
+	e[col][row].HiddenMe = fieldBuilder.DestroyedShip
 	setEmptyShipDiag(e, col, row)
 	setEmptyShipAround(e, col, row)
 }
@@ -399,6 +455,7 @@ func destroy(e *fieldBuilder.Field, col, row int) {
 				if e[c][row].StatusCode == fieldBuilder.Ship {
 					setEmptyShipDiag(e, c, row)
 					e[c][row].Hidden = fieldBuilder.DestroyedShip
+					e[c][row].HiddenMe = fieldBuilder.DestroyedShip
 					setEmptyShipAround(e, c, row)
 				} else {
 					break
@@ -410,6 +467,7 @@ func destroy(e *fieldBuilder.Field, col, row int) {
 				if e[c][row].StatusCode == fieldBuilder.Ship {
 					setEmptyShipDiag(e, c, row)
 					e[c][row].Hidden = fieldBuilder.DestroyedShip
+					e[c][row].HiddenMe = fieldBuilder.DestroyedShip
 					setEmptyShipAround(e, c, row)
 				} else {
 					break
@@ -423,6 +481,7 @@ func destroy(e *fieldBuilder.Field, col, row int) {
 				if e[col][r].StatusCode == fieldBuilder.Ship {
 					setEmptyShipDiag(e, col, r)
 					e[col][r].Hidden = fieldBuilder.DestroyedShip
+					e[col][r].HiddenMe = fieldBuilder.DestroyedShip
 					setEmptyShipAround(e, col, r)
 				} else {
 					break
@@ -434,6 +493,7 @@ func destroy(e *fieldBuilder.Field, col, row int) {
 				if e[col][r].StatusCode == fieldBuilder.Ship {
 					setEmptyShipDiag(e, col, r)
 					e[col][r].Hidden = fieldBuilder.DestroyedShip
+					e[col][r].HiddenMe = fieldBuilder.DestroyedShip
 					setEmptyShipAround(e, col, r)
 				} else {
 					break
@@ -447,6 +507,7 @@ func destroy(e *fieldBuilder.Field, col, row int) {
 
 func injure(e *fieldBuilder.Field, col, row int) {
 	e[col][row].Hidden = fieldBuilder.InjuredShip
+	e[col][row].HiddenMe = fieldBuilder.InjuredShip
 	setEmptyShipDiag(e, col, row)
 
 }
@@ -457,6 +518,7 @@ func setEmptyShipAround(e *fieldBuilder.Field, col, row int) {
 			if c >= 0 && c <= 9 && r >= 0 && r <= 9 {
 				if e[c][r].Hidden == fieldBuilder.Hidden {
 					e[c][r].Hidden = fieldBuilder.EmptyShip
+					e[c][r].HiddenMe = fieldBuilder.EmptyShip
 				}
 			}
 		}
@@ -468,6 +530,7 @@ func setEmptyShipDiag(e *fieldBuilder.Field, col, row int) {
 		for c := col - 1; c <= col+1; c += 2 {
 			if c >= 0 && c <= 9 && r >= 0 && r <= 9 {
 				e[c][r].Hidden = fieldBuilder.EmptyShip
+				e[c][r].HiddenMe = fieldBuilder.EmptyShip
 			}
 		}
 	}
