@@ -41,23 +41,16 @@ func init() {
 }
 
 func callClear() {
-	//value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
-	//if ok {                          //if we defined a clear func for that platform:
-	//	value() //we execute it
-	//} else { //unsupported platform
+	//value, ok := clear[runtime.GOOS]
+	//if ok {
+	//	value()
+	//} else {
 	//	panic("Your platform is unsupported! I can't clear terminal screen :(")
 	//}
 }
 func main() {
 	callClear()
 
-	/*
-		1. Начать игру с ботом
-		 -> 1.1 рандомное расположение своих кораблей
-		 -> 1.2 расстановка кораблей вручную
-		2. Начать игру с соперником
-		3. stop - остановить игру, вызывается из любого места программы
-	*/
 	var in string
 	for {
 		MyField := fieldBuilder.NewField()
@@ -80,19 +73,6 @@ func main() {
 
 		}
 	}
-
-	//MyField.SetShip(in)
-	//MyField.ShowField()
-
-	//if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched != true {
-	//	fmt.Println("Неверный ввод. Пример: h0 или D4")
-	//	MyField.ShowField()
-
-	//if matched, _ := regexp.Match(`^\d$`, []byte(in)); !matched {
-	//	fmt.Println("Неверный ввод. Пример: 1 или 3")
-	//	continue
-	//}
-
 }
 
 // coinFlipping определяет право первого хода
@@ -160,11 +140,11 @@ func manualSet(m, e *fieldBuilder.Field) {
 }
 func checkScore(me, enemy int) bool {
 	if me == 0 {
-		fmt.Println("Лузер, проебал")
+		fmt.Println("Потрачено")
 		return true
 	}
 	if enemy == 0 {
-		fmt.Println("Блэд, ты выиграл...")
+		fmt.Println("Сегодня ты выиграл, но везение не вечно")
 		return true
 	}
 	return false
@@ -179,6 +159,7 @@ func startGame(m, e *fieldBuilder.Field) {
 		if checkScore(shipLeftMe, shipLeftEnemy) {
 			return
 		}
+
 		shootEnemy(m, e, &shipLeftMe)
 		if checkScore(shipLeftMe, shipLeftEnemy) {
 			return
@@ -191,11 +172,14 @@ func waitingCommand(m, e *fieldBuilder.Field) string {
 	var in string
 	fmt.Println(msg.MsgSelectCellToShoot)
 	fmt.Fscan(os.Stdin, &in)
+
 	if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched == true {
 		return in
 	}
+
 	fieldBuilder.ShowField(m, e)
 	fmt.Println(msg.MsgWrongCommand)
+
 	return waitingCommand(m, e)
 }
 
@@ -203,12 +187,15 @@ func shootMe(e, m *fieldBuilder.Field, shipLeftEnemy *int) bool {
 	in := waitingCommand(m, e)
 
 	result := shoot(e, in, shipLeftEnemy)
+
 	if result == s.Miss {
 		return false
 		fmt.Println(result)
 	}
+
 	fieldBuilder.ShowField(m, e)
 	fmt.Println(result)
+
 	return shootMe(e, m, shipLeftEnemy)
 }
 
@@ -270,7 +257,7 @@ func shootEnemy(m, e *fieldBuilder.Field, shipLeftEnemy *int) bool {
 		i = selectNearCell(m, leftEmptyCells)
 	}
 
-	in := CustomConvert(leftEmptyCells[i])
+	in := convert(leftEmptyCells[i])
 	col, row := fieldBuilder.Convert(in)
 
 	shoot(m, in, shipLeftEnemy)
@@ -278,7 +265,6 @@ func shootEnemy(m, e *fieldBuilder.Field, shipLeftEnemy *int) bool {
 		Direction = ""
 		lastHit.Hidden = ""
 		SelectLimit = nil
-		Direction = ""
 		return shootEnemy(m, e, shipLeftEnemy)
 	}
 	if m[col][row].Hidden == fieldBuilder.EmptyShip && lastHit.Hidden != "" {
@@ -316,7 +302,7 @@ func allowedToShoot(enemyField *fieldBuilder.Field, col, row int) bool {
 	return true
 }
 
-func CustomConvert(i fieldBuilder.Cell) string {
+func convert(i fieldBuilder.Cell) string {
 	c := strconv.Itoa(i.Column)
 	r := strconv.Itoa(i.Row)
 	buf := []byte(c)
@@ -324,13 +310,6 @@ func CustomConvert(i fieldBuilder.Cell) string {
 
 	return string(buf[0]) + r
 }
-
-//func getRotationShip(f *fieldBuilder.Field, col, row int) string {
-//	if col-1 >= 0 && col+1 <10 {
-//		if f[col-1][row].StatusCode
-//	}
-//	return ""
-//}
 
 func selectNearCell(f *fieldBuilder.Field, leftEmptyCell []fieldBuilder.Cell) int {
 	/*
@@ -390,7 +369,7 @@ func selectNearCell(f *fieldBuilder.Field, leftEmptyCell []fieldBuilder.Cell) in
 			Direction = "right"
 		}
 		if ContainsCell(leftEmptyCell, f[col][row]) {
-			q := Find(leftEmptyCell, f[col][row])
+			q := find(leftEmptyCell, f[col][row])
 			return q
 		}
 	}
@@ -415,7 +394,7 @@ func ContainsInt(s []int, i int) bool {
 	return false
 }
 
-func Find(a []fieldBuilder.Cell, x fieldBuilder.Cell) int {
+func find(a []fieldBuilder.Cell, x fieldBuilder.Cell) int {
 	for i, n := range a {
 		if x == n {
 			return i

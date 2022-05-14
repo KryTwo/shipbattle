@@ -50,10 +50,10 @@ func init() {
 }
 
 func callClear() {
-	//value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
-	//if ok {                          //if we defined a clear func for that platform:
-	//	value() //we execute it
-	//} else { //unsupported platform
+	//value, ok := clear[runtime.GOOS]
+	//if ok {
+	//	value()
+	//} else {
 	//	panic("Your platform is unsupported! I can't clear terminal screen :(")
 	//}
 }
@@ -454,9 +454,6 @@ func setTresShip(f *Field, in int) int {
 }
 
 func setCuatroShip(f *Field) {
-	//fmt.Println("4 pal try")
-	//col := 0
-	//row := 1
 	col := RandNum(7)
 	row := RandNum(7)
 
