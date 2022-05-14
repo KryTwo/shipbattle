@@ -12,8 +12,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"main/pkg/fieldBuilder"
-	msg "main/pkg/msg"
+	"main/pkg/msg"
 	s "main/pkg/status"
 	"os"
 	"os/exec"
@@ -31,12 +32,18 @@ func init() {
 	clear["linux"] = func() {
 		cmd := exec.Command("clear") //Linux example, its tested
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			log.Fatalf("Can't exec Run, %v", err)
+		}
 	}
 	clear["windows"] = func() {
 		cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			log.Fatalf("Can't exec Run, %v", err)
+		}
 	}
 }
 
@@ -56,7 +63,9 @@ func main() {
 		MyField := fieldBuilder.NewField()
 		EnemyField := fieldBuilder.NewField()
 		fmt.Println(msg.MsgWelcome)
-		fmt.Fscan(os.Stdin, &in)
+		if _, err := fmt.Fscan(os.Stdin, &in); err != nil {
+			log.Fatalf("Input error: %v", err)
+		}
 		switch in {
 		case "1": //начать игру с ботом
 			callClear()
@@ -76,13 +85,13 @@ func main() {
 }
 
 // coinFlipping определяет право первого хода
-func coinFlipping() bool {
-	i := fieldBuilder.RandNum(2)
-	if i == 0 {
-		return true
-	}
-	return false
-}
+//func coinFlipping() bool {
+//	i := fieldBuilder.RandNum(2)
+//	if i == 0 {
+//		return true
+//	}
+//	return false
+//}
 
 func clearVariables(m, e *fieldBuilder.Field) {
 	m = fieldBuilder.NewField()
@@ -93,7 +102,9 @@ func clearVariables(m, e *fieldBuilder.Field) {
 func selectStartOption(m, e *fieldBuilder.Field) {
 	var in string
 	fmt.Println(msg.MsgHowToSetShip)
-	fmt.Fscan(os.Stdin, &in)
+	if _, err := fmt.Fscan(os.Stdin, &in); err != nil {
+		log.Fatalf("Input errpr, %v", err)
+	}
 
 	switch in {
 	case "1":
@@ -123,7 +134,10 @@ func manualSet(m, e *fieldBuilder.Field) {
 
 	for i < 20 {
 		fmt.Println(msg.MsgSelectCellToSetShip)
-		fmt.Fscan(os.Stdin, &in)
+		if _, err := fmt.Fscan(os.Stdin, &in); err != nil {
+			log.Fatalf("Input errpr, %v", err)
+		}
+
 		if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched != true {
 
 			fieldBuilder.ShowField(m, e)
@@ -171,7 +185,9 @@ func startGame(m, e *fieldBuilder.Field) {
 func waitingCommand(m, e *fieldBuilder.Field) string {
 	var in string
 	fmt.Println(msg.MsgSelectCellToShoot)
-	fmt.Fscan(os.Stdin, &in)
+	if _, err := fmt.Fscan(os.Stdin, &in); err != nil {
+		log.Fatalf("Input errpr, %v", err)
+	}
 
 	if matched, _ := regexp.Match(`^[a-jA-J]\d$`, []byte(in)); matched == true {
 		return in
@@ -189,8 +205,8 @@ func shootMe(e, m *fieldBuilder.Field, shipLeftEnemy *int) bool {
 	result := shoot(e, in, shipLeftEnemy)
 
 	if result == s.Miss {
-		return false
 		fmt.Println(result)
+		return false
 	}
 
 	fieldBuilder.ShowField(m, e)

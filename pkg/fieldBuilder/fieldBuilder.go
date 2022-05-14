@@ -2,6 +2,7 @@ package fieldBuilder
 
 import (
 	"fmt"
+	"log"
 	"main/pkg/msg"
 	"math/rand"
 	"os"
@@ -16,7 +17,6 @@ const (
 	Ship          = "S" // ячейка с кораблем
 	InjuredShip   = "I" // поврежденный корабль
 	DestroyedShip = "D" // уничтоженный корабль
-	MissShot      = "m" // промах
 	EmptyShip     = "×" // пустая ячейка гарантированно без корабля
 	Hidden        = "·" // неизвестное поле для отображения сопернику
 
@@ -40,12 +40,18 @@ func init() {
 	clear["linux"] = func() {
 		cmd := exec.Command("clear") //Linux example, its tested
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			log.Fatalf("Can't exec Run, %v", err)
+		}
 	}
 	clear["windows"] = func() {
 		cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			log.Fatalf("Can't exec Run, %v", err)
+		}
 	}
 }
 
