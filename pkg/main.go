@@ -1,21 +1,13 @@
-/*
-	TODO:...
-	1. Сделать поле
-	2. Инструмент ручной установки кораблей
-	2.1 Ограничения расстановки кораблей
-	3. Инструмент рандомной генерации кораблей на поле - для бота или для ленивого
-	4. Разделение полей свой\чужой
-	5. Инструмент реализующий выстрелы
-	...
-*/
 package main
 
 import (
 	"fmt"
 	"log"
-	"main/pkg/fieldBuilder"
-	"main/pkg/msg"
-	s "main/pkg/status"
+	"main/fieldBuilder"
+	"main/msg"
+	"main/status"
+	"runtime"
+
 	"os"
 	"os/exec"
 	"regexp"
@@ -48,12 +40,12 @@ func init() {
 }
 
 func callClear() {
-	//value, ok := clear[runtime.GOOS]
-	//if ok {
-	//	value()
-	//} else {
-	//	panic("Your platform is unsupported! I can't clear terminal screen :(")
-	//}
+	value, ok := clear[runtime.GOOS]
+	if ok {
+		value()
+	} else {
+		panic("Your platform is unsupported! I can't clear terminal screen :(")
+	}
 }
 func main() {
 	callClear()
@@ -73,9 +65,9 @@ func main() {
 		case "2": //начать игру онлайн
 			callClear()
 			fmt.Println("В разработке")
-		//case "0": //выйти
-		//	callClear()
-		//	fmt.Println("Куда ты собрался выходить???")
+		case "0": //выйти
+			callClear()
+			fmt.Println("Куда ты собрался выходить???")
 		default:
 			callClear()
 			fmt.Println("Я тебя игнорирую")
@@ -204,7 +196,7 @@ func shootMe(e, m *fieldBuilder.Field, shipLeftEnemy *int) bool {
 
 	result := shoot(e, in, shipLeftEnemy)
 
-	if result == s.Miss {
+	if result == status.Miss {
 		fmt.Println(result)
 		return false
 	}
@@ -222,13 +214,13 @@ func shoot(field *fieldBuilder.Field, in string, shipLeft *int) string {
 	allow := allowedToShoot(field, col, row)
 
 	if !allow {
-		return s.DoubleShot
+		return status.DoubleShot
 	}
 
 	if !isHere && field[col][row].Hidden == fieldBuilder.Hidden {
 		field[col][row].Hidden = fieldBuilder.EmptyShip
 		field[col][row].HiddenMe = fieldBuilder.EmptyShip
-		return s.Miss
+		return status.Miss
 	}
 
 	if isHere && allow {
@@ -239,16 +231,16 @@ func shoot(field *fieldBuilder.Field, in string, shipLeft *int) string {
 			case 1: // будет убит
 				destroy(field, col, row)
 				*shipLeft--
-				return s.Destroy
+				return status.Destroy
 			default: // будет ранен
 				injure(field, col, row)
 				*shipLeft--
-				return s.Injured
+				return status.Injured
 			}
 		} else {
 			completelyDestroy(field, col, row)
 			*shipLeft--
-			return s.Destroy
+			return status.Destroy
 		}
 	}
 	return ""

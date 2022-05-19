@@ -1,5 +1,11 @@
-FROM golang:latest
+# syntax=docker/dockerfile:1
 
-COPY ./ ./
-RUN go build -o game .
-CMD ["./game"]
+FROM gcr.io/distroless/base-debian10
+
+WORKDIR ./
+
+COPY battle_ship ./
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/battle_ship"]

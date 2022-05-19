@@ -3,10 +3,11 @@ package fieldBuilder
 import (
 	"fmt"
 	"log"
-	"main/pkg/msg"
+	"main/msg"
 	"math/rand"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -56,12 +57,12 @@ func init() {
 }
 
 func callClear() {
-	//value, ok := clear[runtime.GOOS]
-	//if ok {
-	//	value()
-	//} else {
-	//	panic("Your platform is unsupported! I can't clear terminal screen :(")
-	//}
+	value, ok := clear[runtime.GOOS]
+	if ok {
+		value()
+	} else {
+		panic("Your platform is unsupported! I can't clear terminal screen :(")
+	}
 }
 
 type Cell struct {
